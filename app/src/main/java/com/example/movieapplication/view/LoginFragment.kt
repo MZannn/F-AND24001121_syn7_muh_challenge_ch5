@@ -1,14 +1,23 @@
 package com.example.movieapplication.view
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.example.movieapplication.R
 import com.example.movieapplication.databinding.FragmentLoginBinding
+import com.example.movieapplication.model.User
+import com.example.movieapplication.repository.UserRepository
+import com.example.movieapplication.viewModel.AuthViewModel
+import com.example.movieapplication.viewModel.AuthViewModelFactory
+import kotlinx.coroutines.launch
 
 
 // TODO: Rename parameter arguments, choose names that match
@@ -26,6 +35,11 @@ class LoginFragment : Fragment() {
     private var param1: String? = null
     private var param2: String? = null
     private lateinit var binding: FragmentLoginBinding
+    private lateinit var userRepository: UserRepository
+    private val viewModel: AuthViewModel by activityViewModels {
+        AuthViewModelFactory.getInstance(requireContext())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -35,26 +49,50 @@ class LoginFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        viewModel.getAllUsers().observe(viewLifecycleOwner) {
+            Log.d("LoginFragment", "onCreateView: $it")
+        }
+        userRepository = UserRepository(requireContext())
+
         binding = FragmentLoginBinding.inflate(layoutInflater, container, false)
+        val navController = findNavController()
         binding.tvNotHaveAccount.setOnClickListener {
             val action = LoginFragmentDirections.actionLoginFragmentToRegisterFragment()
-            findNavController().navigate(action)
+            navController.navigate(action)
         }
         binding.btnLogin.setOnClickListener {
-            var action = LoginFragmentDirections.actionLoginFragmentToHomeFragment()
-            var bundle = Bundle()
-            bundle.putString("email", binding.etEmail.text.toString())
-            bundle.putString("password", binding.etPassword.text.toString())
 
-//            action.arguments.apply {
-//
-//            }
-            Log.d(
-                "SIMPLE_TAG", "${bundle.getString("email")} ${bundle.getString("password")}"
-            )
-            findNavController().navigate(action).apply { arguments = bundle }
+            if (binding.etEmail.text.toString()
+                    .isNotEmpty() && binding.etPassword.text.toString().isNotEmpty()
+            ) {
+                var checkLogin: User? =
+                    login(binding.etEmail.text.toString(), binding.etPassword.text.toString())
+                if (checkLogin != null) {
+                    lifecycleScope.launch {
+                        userRepository.saveUser(checkLogin)
+                    }
+                    var bundle = Bundle()
+                    bundle.putSerializable("user", "$checkLogin")
+                    val action = LoginFragmentDirections.actionLoginFragmentToHomeFragment()
+                    var intent = Intent(requireContext(), HomeFragment::class.java)
+                    intent.putExtra("user", bundle)
+                    Log.d("LoginFragment", "onCreateView: $checkLogin")
+
+                    navController.navigate(
+                        action
+                    )
+                } else {
+                    Toast.makeText(requireContext(), "Login Failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+
         }
         return binding.root
+    }
+
+    private fun login(email: String, password: String): User? {
+        return viewModel.login(email, password)
     }
 
     companion object {

@@ -5,7 +5,14 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.activityViewModels
+import androidx.navigation.fragment.findNavController
 import com.example.movieapplication.R
+import com.example.movieapplication.databinding.FragmentRegisterBinding
+import com.example.movieapplication.model.User
+import com.example.movieapplication.viewModel.AuthViewModel
+import com.example.movieapplication.viewModel.AuthViewModelFactory
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -21,7 +28,10 @@ class RegisterFragment : Fragment() {
     // TODO: Rename and change types of parameters
     private var param1: String? = null
     private var param2: String? = null
-
+    private lateinit var binding: FragmentRegisterBinding
+    private val viewModel: AuthViewModel by activityViewModels {
+        AuthViewModelFactory.getInstance(requireContext())
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -34,8 +44,41 @@ class RegisterFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_register, container, false)
+
+        binding = FragmentRegisterBinding.inflate(layoutInflater, container, false)
+        val navController = findNavController()
+        binding.btnRegister.setOnClickListener {
+
+            val user = User(
+                email = binding.etEmail.text.toString(),
+                username = binding.etUsername.text.toString(),
+                password = binding.etPassword.text.toString()
+            )
+            var confirmPasswordIsSame =
+                binding.etPassword.text.toString() == binding.etConfirmPassword.text.toString()
+            if (binding.etUsername.text.toString().isNotEmpty() && binding.etEmail.text.toString()
+                    .isNotEmpty() && binding.etPassword.text.toString()
+                    .isNotEmpty() && confirmPasswordIsSame
+            ) {
+                var checkUser = viewModel.register(user)
+                if (checkUser != null) {
+                    navController.popBackStack()
+                } else {
+                    Toast.makeText(requireContext(), "$checkUser", Toast.LENGTH_SHORT).show()
+                }
+            } else if (!confirmPasswordIsSame) {
+                Toast.makeText(
+                    requireContext(),
+                    "Password and Confirm Password is not same",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(requireContext(), "Please fill all the fields", Toast.LENGTH_SHORT)
+                    .show()
+            }
+
+        }
+        return binding.root
     }
 
     companion object {

@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.movieapplication.R
@@ -13,7 +14,9 @@ import com.example.movieapplication.adapter.MovieAdapter
 import com.example.movieapplication.api.ApiClient
 import com.example.movieapplication.databinding.FragmentHomeBinding
 import com.example.movieapplication.model.response.MovieResponse
+import com.example.movieapplication.repository.UserRepository
 import com.google.gson.Gson
+import kotlinx.coroutines.launch
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -33,19 +36,30 @@ class HomeFragment : Fragment() {
     private var param1: String? = null
     private var param2: String? = null
     private lateinit var binding: FragmentHomeBinding
+    private lateinit var userRepository: UserRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-
+        userRepository = UserRepository(requireContext())
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         binding = FragmentHomeBinding.inflate(layoutInflater, container, false)
+        lifecycleScope.launch {
+            userRepository.userFlow.collect { user ->
+                user?.let {
+                    binding.welcomeUsername.text = "Welcome, ${it.username}!"
+                }
+            }
+        }
+        binding.ibtnProfile.setOnClickListener {
+            val action = HomeFragmentDirections.actionHomeFragmentToProfileFragment()
+            findNavController().navigate(action)
+        }
         var recyclerView = binding.rvMovies
         ApiClient.instance.getMovieNowPlaying().enqueue(object : Callback<MovieResponse> {
-
             override fun onResponse(call: Call<MovieResponse>, response: Response<MovieResponse>) {
                 if (response.isSuccessful) {
                     var json = Gson().toJson(response.body())
