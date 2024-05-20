@@ -15,6 +15,7 @@ import com.example.movieapplication.model.User
 import com.example.movieapplication.repository.UserRepository
 import com.example.movieapplication.viewModel.AuthViewModel
 import com.example.movieapplication.viewModel.AuthViewModelFactory
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 // TODO: Rename parameter arguments, choose names that match
@@ -33,13 +34,11 @@ class ProfileFragment : Fragment() {
     private var param2: String? = null
     private lateinit var binding: FragmentProfileBinding
     private lateinit var userRepository: UserRepository
-    var userData:User? = null
     private val authViewModel: AuthViewModel by activityViewModels {
         AuthViewModelFactory.getInstance(requireContext())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        userRepository = UserRepository(requireContext())
         super.onCreate(savedInstanceState)
         arguments?.let {
             param1 = it.getString(ARG_PARAM1)
@@ -51,25 +50,19 @@ class ProfileFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        var id: Int = 0
         binding = FragmentProfileBinding.inflate(layoutInflater, container, false)
-
+        userRepository = UserRepository(requireContext())
         lifecycleScope.launch {
             userRepository.userFlow.collect { user ->
                 user?.let {
-                    userData = getUser(user.id!!)
+                    id = user.id!!
                     binding.etUsername.setText(user.username)
+                    binding.etAddress.setText(user.address)
+                    binding.etBirthdate.setText(user.birthdate)
+                    binding.etFullname.setText(user.fullname)
                 }
             }
-        }
-        binding.etUsername.setText(userData?.username)
-        if (userData?.address != null) {
-            binding.etAddress.setText(userData?.address)
-        }
-        if (userData?.birthdate != null) {
-            binding.etBirthdate.setText(userData?.birthdate)
-        }
-        if (userData?.fullname != null) {
-            binding?.etFullname?.setText(userData?.fullname)
         }
         binding.btnUpdate.setOnClickListener {
             var data = updateUser(
@@ -77,19 +70,26 @@ class ProfileFragment : Fragment() {
                 address = binding.etAddress.text.toString(),
                 birthdate = binding.etBirthdate.text.toString(),
                 username = binding.etUsername.text.toString(),
-                id = userData?.id!!
+                id = id
             )
-            Log.e("data", "data ini $data")
-            getUser(userData?.id!!)
+            var getData = getUser(id)
+            lifecycleScope.launch {
+                userRepository.saveUser(getData)
+            }
+            lifecycleScope.launch {
+                userRepository.userFlow.collect() { user ->
+                    user?.let {
+                        binding.etUsername.setText(user.username)
+                        binding.etAddress.setText(user.address)
+                        binding.etBirthdate.setText(user.birthdate)
+                        binding.etFullname.setText(user.fullname)
+                    }
+                }
+            }
         }
         binding.btnLogout.setOnClickListener {
             lifecycleScope.launch {
                 userRepository.clearUser()
-                userRepository.userFlow.collect { user ->
-                    user?.let {
-                        Log.d("user" , "${user.id}")
-                    }
-                }
             }
             val action = ProfileFragmentDirections.actionProfileFragmentToLoginFragment()
             findNavController().navigate(action)

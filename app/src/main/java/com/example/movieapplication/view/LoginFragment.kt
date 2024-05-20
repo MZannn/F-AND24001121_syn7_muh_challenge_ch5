@@ -42,7 +42,6 @@ class LoginFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
     }
 
     override fun onCreateView(
@@ -53,7 +52,6 @@ class LoginFragment : Fragment() {
             Log.d("LoginFragment", "onCreateView: $it")
         }
         userRepository = UserRepository(requireContext())
-
         binding = FragmentLoginBinding.inflate(layoutInflater, container, false)
         val navController = findNavController()
         binding.tvNotHaveAccount.setOnClickListener {
